@@ -166,6 +166,27 @@ async fn main() -> std::io::Result<()> {
     let client = Client::builder(&token, intents).event_handler(Handler).await.expect("Error creating client");
     let http = client.http.clone();
 
+    let channels = env::var("TARGET_CHANNELS").unwrap_or(String::new());
+    let targets  : Vec<_> = channels
+        .split(",")
+        .filter(|c| c.to_string().trim().len() > 0)
+        .map(|c| {
+            return match c.parse::<u64>() {
+                Ok(u) => {
+                    Some(u)
+                }
+                Err(_) => {
+                    None
+                }
+            }
+        })
+        .filter(|c| c.is_some())
+        .map(|c| c.unwrap())
+        .collect();
+
+    println!("Configured to pipe to the following channels : {:?}", targets);
+
+
     thread::spawn(move || {
         run_loop(tx)
     });
@@ -173,7 +194,9 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(client_loop(client));
 
     for recv in rx {
-        let _ = ChannelId::new(820643666158288897).say(&http, recv).await;
+        for tg in &targets {
+            let _ = ChannelId::new(*tg).say(&http, &recv).await;
+        }
     }
 
     Ok(())
