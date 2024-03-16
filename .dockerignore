@@ -1,0 +1,10 @@
+*
+target
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.env
+!Cargo.lock
+!Cargo.toml
+!src/**/*
