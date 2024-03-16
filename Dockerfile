@@ -1,5 +1,6 @@
 FROM rust:1.76.0-alpine3.19 as build
 
+RUN apk add g++
 
 WORKDIR /app
 COPY . .
