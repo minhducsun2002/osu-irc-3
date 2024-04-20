@@ -9,6 +9,7 @@ RUN mkdir src; echo 'fn main() {}' > src/main.rs
 RUN cargo install --locked --path .
 RUN rm -rf src;
 COPY src src
+RUN touch src/main.rs
 RUN cargo build --release
 
 FROM alpine:3.19.1 as run
