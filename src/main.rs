@@ -136,7 +136,7 @@ fn run_loop(pipe: Sender<String>) -> std::io::Result<()> {
                 }
                 reconnect_delay_ms = min(reconnect_delay_ms + 1000, max_reconnect_delay_ms);
 
-                stream.shutdown(Shutdown::Both).unwrap();
+                let _ = stream.shutdown(Shutdown::Both);
 
                 let new_stream = TcpStream::connect("irc.ppy.sh:6667")?;
                 stream = new_stream;
