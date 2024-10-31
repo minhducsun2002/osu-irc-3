@@ -49,17 +49,19 @@ fn run_loop(pipe: Sender<String>) -> std::io::Result<()> {
 
     let mut stream = TcpStream::connect("irc.ppy.sh:6667")?;
     send_initial_commands(&stream);
+    stream.set_read_timeout(Some(Duration::from_secs(15)))?;
 
     let mut reader = BufReader::new(&stream);
     let mut reconnect_if_fail = true;
     let mut reconnect_delay_ms = 0;
     let max_reconnect_delay_ms = 60 * 1000;
+    let max_ping_separation = Duration::from_secs(100);
     let mut last_ping = SystemTime::now();
 
     // main loop!
     loop {
         let mut line = String::new();
-        let count = reader.read_line(&mut line).unwrap();
+        let count = reader.read_line(&mut line).unwrap_or(0);
         line = line.trim_end().to_string();
 
         if count > 0 {
@@ -130,20 +132,33 @@ fn run_loop(pipe: Sender<String>) -> std::io::Result<()> {
             if !reconnect_if_fail {
                 println!("Refusing to reconnect.");
             } else {
-                println!("The other side disconnected.");
-                if reconnect_delay_ms != 0 {
-                    println!("Delaying reconnection by {} ms.", reconnect_delay_ms);
-                    sleep(Duration::from_millis(reconnect_delay_ms));
+                // check if it is really timeout
+                let now = SystemTime::now();
+                let maybe_duration = now.duration_since(last_ping);
+                match maybe_duration {
+                    Err(_) => {
+                        // clock rewound? resetting time
+                        last_ping = now;
+                    },
+                    Ok(duration) => {
+                        if duration > max_ping_separation {
+                            println!("The other side disconnected.");
+                            if reconnect_delay_ms != 0 {
+                                println!("Delaying reconnection by {} ms.", reconnect_delay_ms);
+                                sleep(Duration::from_millis(reconnect_delay_ms));
+                            }
+                            reconnect_delay_ms = min(reconnect_delay_ms + 1000, max_reconnect_delay_ms);
+
+                            let _ = stream.shutdown(Shutdown::Both);
+
+                            let new_stream = TcpStream::connect("irc.ppy.sh:6667")?;
+                            stream = new_stream;
+                            reader = BufReader::new(&stream);
+                            println!("Attempting reconnection.");
+                            send_initial_commands(&stream);
+                        }
+                    }
                 }
-                reconnect_delay_ms = min(reconnect_delay_ms + 1000, max_reconnect_delay_ms);
-
-                let _ = stream.shutdown(Shutdown::Both);
-
-                let new_stream = TcpStream::connect("irc.ppy.sh:6667")?;
-                stream = new_stream;
-                reader = BufReader::new(&stream);
-                println!("Attempting reconnection.");
-                send_initial_commands(&stream);
             }
         }
     }
