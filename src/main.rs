@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::{env, thread};
 use serenity::async_trait;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Write};
 use std::net::{Shutdown, TcpStream};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
@@ -215,5 +215,5 @@ async fn main() -> std::io::Result<()> {
         }
     }
 
-    Ok(())
+    Err(Error::new(ErrorKind::Other, "IRC connection unexpectedly failed"))
 }
