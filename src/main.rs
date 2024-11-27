@@ -70,7 +70,6 @@ fn run_loop(pipe: Sender<String>) -> std::io::Result<()> {
                 .collect();
 
             if pieces[0] == "PING" {
-                println!("Ping received");
                 write(&stream, format!("PONG {}", pieces[1]));
                 last_ping = SystemTime::now();
                 continue;
